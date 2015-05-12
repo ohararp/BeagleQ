@@ -13,10 +13,10 @@ This is the beagleq client.
 
 Install
 -------
-    cd /usr/share/bone101/
-    git clone git://github.com/HouseOfBeck/BeagleQ
+    cd /var/lib/cloud9/
+    git clone git://github.com/ohararp/BeagleQ
 
-    mv /usr/share/bone101/BeagleQ/beagleq /usr/share/bone101/
+    mv /var/lib/cloud9/BeagleQ/beagleq /var/lib/cloud9/beagleq
 Wifi Setup  - Static IP
 -----------------------
 Detect USB Wifi adaptor
@@ -38,7 +38,7 @@ Edit file to reflect the changes below
       wpa-psk  "YOUR_PASS_HERE"
 
 Restart Network Interface
-    
+
     /etc/init.d/networking restart
 
 BeagleQ Setup
@@ -54,8 +54,9 @@ Scroll to Line ~86 and Update
     
 Python - Start Server
 ---------------------
-
-    python ./beagleq-server
+    
+    cd /var/lib/cloud9/bone101/BeagleQ
+    ./beagleq-server.js
     
 
 View Live Html Page:

@@ -1,8 +1,8 @@
 function drawChart() {
   var data = google.visualization.arrayToDataTable([
-    ['Time', 'Pit Set', 'Pit', 'Meat Set', 'Meat'],
-    [1,  225, 200, 180,  80],
-    [2,  225, 210, 180, 100]
+    ['Time', 'Pit Set', 'Pit', 'Meat Set', 'Meat1', 'Meat2', 'Meat3'],
+    [1,  225, 200, 180,  81, 82, 83],
+    [2,  225, 210, 180, 101, 102, 103]
   ]);
 //
 //  var data = google.visualization.DataTable();
@@ -29,13 +29,16 @@ function drawChart() {
 
      count = 3
        setInterval(function() {
-          var pitData = parseInt(document.getElementById('pitTemp').innerHTML);
           var psData = parseInt(document.getElementById('pitSet').innerHTML);
-          var meatData = parseInt(document.getElementById('meat1Temp').innerHTML);
+          var pitData = parseInt(document.getElementById('pitTemp').innerHTML);
           var msData = parseInt(document.getElementById('meat1Set').innerHTML);
+          var meat1Data = parseInt(document.getElementById('meat1Temp').innerHTML);
+          var meat2Data = parseInt(document.getElementById('meat3Temp').innerHTML);
+          var meat3Data = parseInt(document.getElementById('meat1Temp').innerHTML);
+          
           if (pitData > 0) {
               count++
-	      data.addRow([count, psData, pitData, msData, meatData]);
+	      data.addRow([count, psData, pitData, msData, meat1Data, meat2Data, meat3Data]);
               chart.draw(data, options);
           }
        }, 5000);
@@ -47,7 +50,9 @@ function drawGauge() {
    var data = google.visualization.arrayToDataTable([
      ['Label', 'Value'],
      ['Pit', 80],
-     ['Meat1', 68]
+     ['Meat1', 68],
+     ['Meat2', 69],
+     ['Meat3', 70],
     ]);
 
     var options = {
@@ -64,10 +69,14 @@ function drawGauge() {
 
     setInterval(function() {
        var pitData = parseInt(document.getElementById('pitTemp').innerHTML);
-       var meatData = parseInt(document.getElementById('meat1Temp').innerHTML);
+       var meat1Data = parseInt(document.getElementById('meat1Temp').innerHTML);
+       var meat2Data = parseInt(document.getElementById('meat2Temp').innerHTML);
+       var meat3Data = parseInt(document.getElementById('meat3Temp').innerHTML);
        if (pitData > 0) {
            data.setValue(0, 1, pitData);
-           data.setValue(1, 1, meatData);
+           data.setValue(1, 1, meat1Data);
+           data.setValue(1, 1, meat2Data);
+           data.setValue(1, 1, meat3Data);
            gauge.draw(data, options);
        }
     }, 5000);
@@ -116,6 +125,8 @@ function readyFN() {
 	      document.getElementById('pitTemp').innerHTML = temperature.pitTemp;
 	      document.getElementById('meat1Set').innerHTML = temperature.meat1Set;
 	      document.getElementById('meat1Temp').innerHTML = temperature.meat1Temp;
+	      document.getElementById('meat2Temp').innerHTML = temperature.meat2Temp;
+	      document.getElementById('meat3Temp').innerHTML = temperature.meat3Temp;
 	   }
 
 	   function updateInfo(message) {

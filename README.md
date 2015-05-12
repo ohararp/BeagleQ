@@ -16,6 +16,7 @@ Install
     cd /usr/share/bone101/
     git clone git://github.com/HouseOfBeck/BeagleQ
 
+    mv /usr/share/bone101/BeagleQ/beagleq /usr/share/bone101/
 Wifi Setup  - Static IP
 -----------------------
 Detect USB Wifi adaptor

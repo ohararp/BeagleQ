@@ -6,8 +6,8 @@ var buffer = require('buffer');
 var WebSocketServer = require('ws').Server;
 var PID = require('./PID_v1.js');
 
-SIM_MODE = 0;
-DISPLAY = 0;
+var SIM_MODE = 0;
+var DISPLAY = 0;
 
 if (process.argv.indexOf("--sim") > -1) {
   console.log("Running in simulation mode");
@@ -17,17 +17,20 @@ if (process.argv.indexOf("--sim") > -1) {
   DISPLAY = 1;
 }
 
-pitTemp = 0 ;
-pitSet = 225 ;
-meat1Temp = 0;
-meat1Set = 160;
+var pitSet = 225 ;
+var pitTemp = 0 ;
+var meat1Set = 160;
+var meat1Temp = 0;
+var meat2Temp = 0;
+var meat3Temp = 0;
 
-pitAlertEnabled = 0;
-pitAlert = 0;
-meatAlertEnabled = 0;
-meatAlert = 0;
-output = 0;
-
+var pitEnable = 0;
+var pitGuard = 0;
+var pitAlertEnabled = 0;
+var pitAlert = 0;
+var meatAlertEnabled = 0;
+var meatAlert = 0;
+var output = 0;
 
 var A = 0;
 var B = 0;
@@ -75,7 +78,7 @@ function displayTemperature(temp) {
     }
     var one = ten % 10;
     d.writeDigit(3, Math.floor(one), 1);
-    frac = Math.floor((one * 10) % 10);
+    var frac = Math.floor((one * 10) % 10);
     d.writeDigit(4, frac);
     d.writeDisplay();
 }
@@ -97,7 +100,7 @@ function initSim() {
       var lines = text.split('\n');
       lines.forEach(function(line) {
          var parts = line.split(' ');
-         length = sim_temperature.push(0);
+         var length = sim_temperature.push(0);
          sim_temperature[length-1] = parts[1];
       });
    });
@@ -128,7 +131,7 @@ function initProbes() {
 
 function initResistors() {
    var buf = new Buffer(128);
-   eepromFile = '/sys/bus/i2c/drivers/at24/1-0054/eeprom';
+   var eepromFile = '/sys/bus/i2c/drivers/at24/1-0054/eeprom';
    var eeprom = fs.openSync( eepromFile, 'r');
    fs.readSync(eeprom, buf, 0, 128, 244);
    fs.closeSync(eeprom);
@@ -155,15 +158,17 @@ function getTemperatures() {
 	b.analogRead(PIT, getPIT);
    }
 	b.analogRead(MEAT1, getMEAT1);
+	b.analogRead(MEAT2, getMEAT2);
+	b.analogRead(MEAT3, getMEAT3);
 
 };
 
 function getPIT(x) {
  if (!x.err) {
 
-   r1 = R11/((1/x.value)-1.0);
-   ktemperature = 1.0 / (A + (B * Math.log(r1)) + (C * Math.pow(Math.log(r1),3)));
-   temperature = (ktemperature - 273.15) * 1.8 + 32;
+   var r1 = R11/((1/x.value)-1.0);
+   var ktemperature = 1.0 / (A + (B * Math.log(r1)) + (C * Math.pow(Math.log(r1),3)));
+   var temperature = (ktemperature - 273.15) * 1.8 + 32;
 //   console.log('PIT: raw: %d Resistance: %d Temp(F): %d', x.value.toFixed(3), r1.toFixed(0), temperature.toFixed(1));
    pitTemp = temperature;
  }
@@ -171,11 +176,31 @@ function getPIT(x) {
 
 function getMEAT1(x) {
  if (!x.err) {
-   r1 = R10/((1/x.value)-1.0);
-   ktemperature = 1.0 / (A + (B * Math.log(r1)) + (C * Math.pow(Math.log(r1),3)));
-   temperature = (ktemperature - 273.15) * 1.8 + 32;
+   var r1 = R10/((1/x.value)-1.0);
+   var ktemperature = 1.0 / (A + (B * Math.log(r1)) + (C * Math.pow(Math.log(r1),3)));
+   var temperature = (ktemperature - 273.15) * 1.8 + 32;
 //   console.log('MEAT-1: raw: %d Resistance: %d Temp(F): %d', x.value.toFixed(3), r1.toFixed(0), temperature.toFixed(1));
    meat1Temp = temperature;
+ }
+};
+
+function getMEAT2(x) {
+ if (!x.err) {
+   var r1 = R9/((1/x.value)-1.0);
+   var ktemperature = 1.0 / (A + (B * Math.log(r1)) + (C * Math.pow(Math.log(r1),3)));
+   var temperature = (ktemperature - 273.15) * 1.8 + 32;
+//   console.log('MEAT-2: raw: %d Resistance: %d Temp(F): %d', x.value.toFixed(3), r1.toFixed(0), temperature.toFixed(1));
+   meat2Temp = temperature;
+ }
+};
+
+function getMEAT3(x) {
+ if (!x.err) {
+   var r1 = R8/((1/x.value)-1.0);
+   var ktemperature = 1.0 / (A + (B * Math.log(r1)) + (C * Math.pow(Math.log(r1),3)));
+   var temperature = (ktemperature - 273.15) * 1.8 + 32;
+//   console.log('MEAT-3: raw: %d Resistance: %d Temp(F): %d', x.value.toFixed(3), r1.toFixed(0), temperature.toFixed(1));
+   meat3Temp = temperature;
  }
 };
 
@@ -235,7 +260,7 @@ wss.on('connection', function(ws) {
 
    // Handle incoming messages.
    ws.on('message', function(message) {
-      obj = JSON.parse(message);
+      var obj = JSON.parse(message);
    //   console.log("parse: " + obj.topic + " " + obj.data);
 
 
@@ -277,7 +302,7 @@ wss.on('connection', function(ws) {
      if (DISPLAY) {
        displayTemperature(pitTemp);
      }
-     lastJSON = JSON.stringify({"topic":"temperatures","created_at":(new Date()),"pitSet":pitSet.toFixed(0),"pitTemp":pitTemp.toFixed(2),"meat1Set":meat1Set.toFixed(0),"meat1Temp":meat1Temp.toFixed(2),"fanSpeed":output.toFixed(2)});
+     var lastJSON = JSON.stringify({"topic":"temperatures","created_at":(new Date()),"pitSet":pitSet.toFixed(0),"pitTemp":pitTemp.toFixed(2),"meat1Set":meat1Set.toFixed(0),"meat1Temp":meat1Temp.toFixed(2),"meat2Temp":meat2Temp.toFixed(2),"meat3Temp":meat3Temp.toFixed(2),"fanSpeed":output.toFixed(2)});
      console.log(lastJSON);
 
 //     var outputFilename = '/usr/share/bone101/beagleq/last.json';

@@ -33,8 +33,8 @@ function drawChart() {
           var pitData = parseInt(document.getElementById('pitTemp').innerHTML);
           var msData = parseInt(document.getElementById('meat1Set').innerHTML);
           var meat1Data = parseInt(document.getElementById('meat1Temp').innerHTML);
-          var meat2Data = parseInt(document.getElementById('meat3Temp').innerHTML);
-          var meat3Data = parseInt(document.getElementById('meat1Temp').innerHTML);
+          var meat2Data = parseInt(document.getElementById('meat2Temp').innerHTML);
+          var meat3Data = parseInt(document.getElementById('meat3Temp').innerHTML);
           
           if (pitData > 0) {
               count++

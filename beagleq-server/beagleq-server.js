@@ -1,173 +1,334 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-  <title>beagleQ Controller</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="">
-  <meta name="author" content="">
+#!/usr/bin/env node
 
-        <link rel="stylesheet" type="text/css" href="css/bootstrap.css"/>
-        <link rel="stylesheet" type="text/css" href="css/slider.css"/>
-	<!--append ‘#!watch’ to the browser URL, then refresh the page. -->
-	
-  <!-- Fav and touch icons -->
-  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="img/apple-touch-icon-144-precomposed.png">
-  <link rel="apple-touch-icon-precomposed" sizes="114x114" href="img/apple-touch-icon-114-precomposed.png">
-  <link rel="apple-touch-icon-precomposed" sizes="72x72" href="img/apple-touch-icon-72-precomposed.png">
-  <link rel="apple-touch-icon-precomposed" href="img/apple-touch-icon-57-precomposed.png">
-  <link rel="shortcut icon" href="img/favicon.png">
-  
-    <script type="text/javascript" src="js/jquery.js"></script>
-    <script type="text/javascript" src="js/bootstrap.js"></script>
-    <script type="text/javascript" src="js/bootstrap-slider.js"></script>
-    <script type="text/javascript" src="js/beagleq.js"></script>
+var b = require('bonescript');
+var fs = require('fs');
+var buffer = require('buffer');
+var WebSocketServer = require('ws').Server;
+var PID = require('./PID_v1.js');
 
-  <script type='text/javascript' src='https://www.google.com/jsapi'></script>
+var SIM_MODE = 0;
+var DISPLAY = 0;
 
-	<script type='text/javascript'>
+if (process.argv.indexOf("--sim") > -1) {
+  console.log("Running in simulation mode");
+  SIM_MODE = 1;
+} else if (process.argv.indexOf("--display") > -1) {
+  console.log("Running with external display");
+  DISPLAY = 1;
+}
 
-	   google.load('visualization', '1', {packages:['gauge']});
-	   google.setOnLoadCallback(drawGauge);
+var pitSet = 225 ;
+var pitTemp = 0 ;
+var meat1Set = 160;
+var meat1Temp = 0;
+var meat2Temp = 0;
+var meat3Temp = 0;
 
-	   google.load("visualization", "1", {packages:["corechart"]});
-	   google.setOnLoadCallback(drawChart);
+var pitEnable = 0;
+var pitGuard = 0;
+var pitAlertEnabled = 0;
+var pitAlert = 0;
+var meatAlertEnabled = 0;
+var meatAlert = 0;
+var output = 0;
 
-	</script>
-	<script>
-            $( document ).ready(readyFN) 
-        </script>
-</head>
+var A = 0;
+var B = 0;
+var C = 0;
 
-<body>
-<section>
-<div class="container">
-	<div class="row clearfix">
-		<div class="col-md-12 column">
-			<img alt="140x140" src="img/BeagleQ.png">
-			<div class="tabbable">
-				<ul class="nav nav-tabs">
-				  <li class="active" ><a href="#panel-cook" data-toggle="tab">Cook</a></li>
-			  	  <li><a href="#panel-graph" data-toggle="tab">Chart</a></li>
-			  	  <li><a href="#panel-930432" data-toggle="tab">Test</a></li>
-				  <li><a href="#panel-about" data-toggle="tab">About</a></li>
-				</ul>
-				<div class="tab-content">
-					<div class="tab-pane fade in active" id="panel-cook">
-                                            <div class='container'>
-					        <div id="gauge_div"></div>
-                                            </div>
-					    <br>
-                                            <div class='container'>
-						    <p><b>Pit Setpoint</b>
-	                                            <input type="text"
-	                                               class="slider span2"
-	                                               value=""
-						       data-slider-id="pitSlider"
-	                                               data-slider-min="120"
-                                                       data-slider-max="400"
-                                                       data-slider-step="5"
-                                                       data-slider-value="225"
-                                                       data-slider-orientation="horizontal"
-                                                       data-slider-selection="after"
-					               data-slider-tooltip="show"
-					               id="pitSL"/>
-						       <strong class="pad-left"><span id="pitSet" value="225"></span></strong>
-                                                    </p>
-                                            </div>
-                                            <br>
-                                            <div class='container'>
-						    <strong class="pad-right">Meat Setpoint</strong>
-	                                            <input type="text"
-	                                               class="slider span2"
-	                                               value=""
-	                                               data-slider-min="120"
-                                                       data-slider-max="200"
-                                                       data-slider-step="5"
-                                                       data-slider-value="180"
-                                                       data-slider-orientation="horizontal"
-                                                       data-slider-selection="after"
-					               data-slider-tooltip="show"
-					               id="meatSL"/>
-						       <strong class="pad-left"><span id="meat1Set" value="180"></span></strong>
-                                            </div>
-                                            <br>
-                                            <div class='container'>
-					      <strong class="pad-left">PID Control: </strong>
-					      <div class="btn-group btn-toggle">
-					  	   <button id="pidOn" class="btn btn-success">On</button>
-					   	   <button id="pidOff" class="btn btn-danger" active>Off</button>
-					       </div>
-                                            </div>
-                                            <br>
-                                            <div class='container'>
-	                                       <button class="btn btn-danger disabled" id="piezo">
-						  <span class="glyphicon glyphicon-volume-off"></span> 
-	                                       </button>
-	                                       <button class="btn btn-danger" id="fan">
-						  <span class="glyphicon glyphicon-fire"></span> 
-	                                       </button>
-                                            </div>
-					    <br>
-                                            <div class='container'>
-						    <div class="alert alert-info">
-						       <h4>Topic = <span id="iStatus"></span></h4>
-						       <h4>Info = <span id="iInfo"></span></h4>
-						    </div>
-						    <div class="alert alert-info" id="pitAlertPanel">
-						       <h4>PIT Temp = <span id="pitTemp"></span></h4>
-						    </div>
-						    <div class="alert alert-info" id="meat1AlertPanel">
-						       <h4>MEAT1 Temp = <span id="meat1Temp"></span></h4>
-						    </div>
-						    <div class="alert alert-info" id="meat2AlertPanel">
-						       <h4>MEAT2 Temp = <span id="meat2Temp"></span></h4>
-						    </div>
-						    <div class="alert alert-info" id="meat3AlertPanel">
-						       <h4>MEAT3 Temp = <span id="meat3Temp"></span></h4>
-						    </div>						    
-                                            </div>
-					</div>
+var R11 = 0; // P9_39
+var R10 = 0; // P9_37
+var R9 = 0; // P9_35
+var R8 = 0; // P9_33
 
-					<div class="tab-pane fade" id="panel-graph">
-                                          <div class='container'>
-					        <div id="chart_div"></div>
-				  	  </div>
-				       </div>
+var PIT = 'P9_39';
+var MEAT1 = 'P9_37';
+var MEAT2 = 'P9_35';
+var MEAT3 = 'P9_33';
+var FAN = 'P9_16';
 
-					<div class="tab-pane fade" id="panel-930432">
+b.pinMode(FAN, b.OUTPUT);
 
-                                            <div class='container'>
-					       <input type="number" min="0" max="100" step="5" value="75" id="fanSL" name="Fan Duty Cycle">
-                                            </div>
-                                            <br>
-                                            <div class='container'>
-						    <input type="checkbox" checked 
-						         data-on-color="success" data-off-color="warning" id="fanSW"/>
-                                            </div>
-                                       </div>
+var sim_temperature = [];
+var i = 0;
+var pidToggle = 0;
 
-					<div class="tab-pane fade" id="panel-about">
-					 <div class="panel panel-default">
-					  <div class="panel-heading">BeagleBone Black Info</div>
-					    <div class="panel-body">
-						<h4>Name = <span id="beagleName"></span></h4>
-						<h4>Version = <span id="beagleVersion"></span></h4>
-						<h4>SerialNumber = <span id="beagleSN"></span></h4>
-						<h4>Bonescript = <span id="beagleBonescript"></span></h4>
-				  	    </div>
-					  </div>
-					 <div class="panel panel-default">
-					  <div class="panel-heading">BeagleQ Info</div>
-					    <div class="panel-body">
-					       <iframe src="b.html" frameborder=0 seamless></iframe>
-				  	    </div>
-					  </div>
-					</div>
-			</div>
-		</div>
-	</div>
-</div>
-</section>
-</body>
-</html>
+var myPID = new PID(0, 0, pitSet ,2,5,1, 0);
+
+
+if (DISPLAY) {
+   var d = require('./ht16k33');
+   d.start();
+}
+
+function displayTemperature(temp) {
+    console.log('Temperature = ',temp);
+
+    var hundred = Math.floor(temp / 100);
+    if (hundred == 0) {
+         d.writeDigitRaw(0, 0x00);
+    } else {
+         d.writeDigit(0, hundred);
+    }
+    var ten = temp % 100;
+    if ((Math.floor(ten/10) == 0) && (hundred == 0)) {
+         d.writeDigitRaw(1, 0x00);
+    } else {
+         d.writeDigit(1, Math.floor(ten/10));
+    }
+    var one = ten % 10;
+    d.writeDigit(3, Math.floor(one), 1);
+    var frac = Math.floor((one * 10) % 10);
+    d.writeDigit(4, frac);
+    d.writeDisplay();
+}
+
+function initSim() {
+
+   fs.readFile('cook.log', function (err, logData) {
+					
+// If an error occurred, throwing it will
+// display the exception and kill our app.
+//
+      if (err) throw err;
+
+// logData is a Buffer, convert to string.
+
+      var text = logData.toString();
+ 
+// Break up the file into lines.
+      var lines = text.split('\n');
+      lines.forEach(function(line) {
+         var parts = line.split(' ');
+         var length = sim_temperature.push(0);
+         sim_temperature[length-1] = parts[1];
+      });
+   });
+   console.log("SIM_MODE INITIALIZED");
+};
+
+function initProbes() {
+   var sourceJSON = 'probes.json';
+   var jsonFile = fs.readFileSync(sourceJSON, 'ascii');
+   console.log('Parsing '+sourceJSON);
+   var p = JSON.parse(jsonFile);
+
+   for (var i = 0; i < p.probes.length; i++) { 
+       if(p.probes[i].Model == 'ET-73') {
+        console.log('Found probe ... ET-73');
+        var probe = p.probes[i];
+
+        console.log(probe.Steinhart.A);
+        console.log(probe.Steinhart.B);
+        console.log(probe.Steinhart.C);
+
+        A = probe.Steinhart.A;
+        B = probe.Steinhart.B;
+        C = probe.Steinhart.C;
+       }
+   }
+};
+
+function initResistors() {
+   var buf = new Buffer(128);
+   var eepromFile = '/sys/bus/i2c/drivers/at24/1-0054/eeprom';
+   var eeprom = fs.openSync( eepromFile, 'r');
+   fs.readSync(eeprom, buf, 0, 128, 244);
+   fs.closeSync(eeprom);
+
+   console.log('R8: '+buf.readUInt32LE(0));
+   console.log('R9: '+buf.readUInt32LE(4));
+   console.log('R10: '+buf.readUInt32LE(8));
+   console.log('R11: '+buf.readUInt32LE(12));
+
+   R8 = buf.readUInt32LE(0);
+   R9 = buf.readUInt32LE(4);
+   R10 = buf.readUInt32LE(8);
+   R11 = buf.readUInt32LE(12);
+};
+
+function getTemperatures() {
+   if (SIM_MODE && i < 2600 ) {
+        pitTemp = parseFloat(sim_temperature[i]);
+	i++;
+   } else if (SIM_MODE && i > 2600) {
+	pidToggle = 0; 
+	b.analogRead(PIT, getPIT);
+   } else {
+	b.analogRead(PIT, getPIT);
+   }
+	b.analogRead(MEAT1, getMEAT1);
+	b.analogRead(MEAT2, getMEAT2);
+	b.analogRead(MEAT3, getMEAT3);
+
+};
+
+function getPIT(x) {
+ if (!x.err) {
+
+   var r1 = R11/((1/x.value)-1.0);
+   var ktemperature = 1.0 / (A + (B * Math.log(r1)) + (C * Math.pow(Math.log(r1),3)));
+   var temperature = (ktemperature - 273.15) * 1.8 + 32;
+//   console.log('PIT: raw: %d Resistance: %d Temp(F): %d', x.value.toFixed(3), r1.toFixed(0), temperature.toFixed(1));
+   pitTemp = temperature;
+ }
+};
+
+function getMEAT1(x) {
+ if (!x.err) {
+   var r1 = R10/((1/x.value)-1.0);
+   var ktemperature = 1.0 / (A + (B * Math.log(r1)) + (C * Math.pow(Math.log(r1),3)));
+   var temperature = (ktemperature - 273.15) * 1.8 + 32;
+//   console.log('MEAT-1: raw: %d Resistance: %d Temp(F): %d', x.value.toFixed(3), r1.toFixed(0), temperature.toFixed(1));
+   meat1Temp = temperature;
+ }
+};
+
+function getMEAT2(x) {
+ if (!x.err) {
+   var r1 = R9/((1/x.value)-1.0);
+   var ktemperature = 1.0 / (A + (B * Math.log(r1)) + (C * Math.pow(Math.log(r1),3)));
+   var temperature = (ktemperature - 273.15) * 1.8 + 32;
+//   console.log('MEAT-2: raw: %d Resistance: %d Temp(F): %d', x.value.toFixed(3), r1.toFixed(0), temperature.toFixed(1));
+   meat2Temp = temperature;
+ }
+};
+
+function getMEAT3(x) {
+ if (!x.err) {
+   var r1 = R8/((1/x.value)-1.0);
+   var ktemperature = 1.0 / (A + (B * Math.log(r1)) + (C * Math.pow(Math.log(r1),3)));
+   var temperature = (ktemperature - 273.15) * 1.8 + 32;
+//   console.log('MEAT-3: raw: %d Resistance: %d Temp(F): %d', x.value.toFixed(3), r1.toFixed(0), temperature.toFixed(1));
+   meat3Temp = temperature;
+ }
+};
+
+if (SIM_MODE) initSim();
+
+initProbes();
+
+initResistors();
+
+// Instantiate WebSocket server.
+var wss = new WebSocketServer({
+     port: 8086
+});
+
+console.log('Server running on port: 8086');
+
+wss.on('connection', function(ws) {
+
+   // Send message to client that connection has been made.
+   ws.send(JSON.stringify({"topic":"info", "text":"BBB WebSocket Server Connected!!!"})); 
+
+   // Send BeagleBone Info
+   b.getPlatform(sendBeagleInfo);
+     function sendBeagleInfo(x) {
+       console.log('name = ' + x.name);
+       console.log('version = ' + x.version);
+       console.log('serialNumber = ' + x.serialNumber);
+       console.log('bonescript = ' + x.bonescript);
+
+       ws.send(JSON.stringify({"topic":"beagleInfo","beagleName":x.name ,"beagleVersion":x.version,"beagleSN":x.serialNumber,"beagleBonescript":x.bonescript})); 
+     }
+
+   function checkAlerts() {
+      pitEnable = pitSet * 0.90;
+      pitGuard = pitSet * 0.03;
+//      console.log("Alert: " + " " + pitSet + " " + pitEnable + " " + pitGuard);
+
+      if ((pitTemp > pitEnable)&&(pitAlertEnabled != 1)) {
+         console.log("Pit enabled");
+         pitAlertEnabled = 1;
+         ws.send(JSON.stringify({"topic":"pitAlert", "data":1})); 
+      }
+
+      if (pitAlertEnabled) {
+         if (( pitTemp < (pitSet - pitGuard)) || ( pitTemp > (pitSet + pitGuard))) {
+            if (pitAlert != 1) {
+               console.log("Pit alert set");
+	       pitAlert = 1;
+               ws.send(JSON.stringify({"topic":"pitAlert", "data":2})); 
+            }
+         } else if (pitAlert == 1) {
+	    pitAlert = 0;
+            ws.send(JSON.stringify({"topic":"pitAlert", "data":1})); 
+         }
+      }
+};
+
+   // Handle incoming messages.
+   ws.on('message', function(message) {
+      var obj = JSON.parse(message);
+   //   console.log("parse: " + obj.topic + " " + obj.data);
+
+
+      switch (obj.topic) {
+         case "pidToggle":
+            if (obj.data == 1 ) {
+               console.log("PID On");
+	       pidToggle = 1;
+               ws.send(JSON.stringify({"topic":"info", "text":"PID On"}));
+            } else {
+               console.log("PID Off");
+	       pidToggle = 0;
+	       fanControl(0.0);
+               ws.send(JSON.stringify({"topic":"info", "text":"PID Off"}));
+            }
+	    break;
+         case "pitSL":
+            console.log("Pit Slider: " + obj.data);
+	    pitSet = obj.data;
+	    myPID.SetSetPoint(pitSet);
+	    break;
+         case "meatSL":
+            console.log("Meat Slider: " + obj.data);
+	    meat1Set = obj.data;
+	    break;
+         default:
+	    console.log("No action: " + obj.topic + " " + obj.data);
+      }
+   });
+
+
+   var interval = setInterval(function() {
+     getTemperatures();
+     checkAlerts();
+     if (pidToggle) {
+        output = myPID.Compute(pitTemp);
+        fanControl(output);
+     }
+     if (DISPLAY) {
+       displayTemperature(pitTemp);
+     }
+     var lastJSON = JSON.stringify({"topic":"temperatures","created_at":(new Date()),"pitSet":pitSet.toFixed(0),"pitTemp":pitTemp.toFixed(2),"meat1Set":meat1Set.toFixed(0),"meat1Temp":meat1Temp.toFixed(2),"meat2Temp":meat2Temp.toFixed(2),"meat3Temp":meat3Temp.toFixed(2),"fanSpeed":output.toFixed(2)});
+     console.log(lastJSON);
+
+//     var outputFilename = '/usr/share/bone101/beagleq/last.json';
+//     fs.writeFile(outputFilename, lastJSON, function(err) {
+//	  if(err) console.log(err);
+//     }); 
+     if (ws.readyState = ws.OPEN) ws.send(lastJSON);
+   }, 4000);
+
+   ws.on('error', function() {
+	   console.log('error');
+   });
+   // When connection closes.
+   ws.on('close', function() {
+	   ws.terminate();
+	   clearInterval(interval);
+      console.log('stopping client interval');
+   });
+
+   function fanControl(speed) {
+     if (speed > 0.5) {
+        b.analogWrite(FAN,output,2900);
+        ws.send(JSON.stringify({"topic":"fanStatus", "state":"1"}));
+     } else {
+        b.analogWrite(FAN,0,2900);
+        ws.send(JSON.stringify({"topic":"fanStatus", "state":"0"}));
+     }
+   };
+});

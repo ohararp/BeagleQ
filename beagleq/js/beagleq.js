@@ -75,15 +75,15 @@ function drawGauge() {
        if (pitData > 0) {
            data.setValue(0, 1, pitData);
            data.setValue(1, 1, meat1Data);
-           data.setValue(1, 1, meat2Data);
-           data.setValue(1, 1, meat3Data);
+           data.setValue(2, 1, meat2Data);
+           data.setValue(3, 1, meat3Data);
            gauge.draw(data, options);
        }
     }, 5000);
 }
 
 function readyFN() {
-	   var host = '192.168.1.116';
+	   var host = '192.168.1.166';
 	   var port = '8086';
 
 	   var ws = new WebSocket('ws://' + host + ':' + port);

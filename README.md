@@ -17,6 +17,18 @@ Install
     git clone git://github.com/ohararp/BeagleQ
 
     mv /var/lib/cloud9/BeagleQ/beagleq /var/lib/cloud9/beagleq
+    
+Python Setup and Demo
+------------
+Some scripts are needed to properly configure the EEPROM onboard the BeagleQ Cape
+
+    python /var/lib/cloud9/BeagleQ/eeprom/write_calbration.py
+
+
+This simple python code uses the Adafruit BBIO library (already installed on Debian 2015-03-01).
+    
+    python /var/lib/cloud9/BeagleQ/demo/demo.py
+
 Wifi Setup  - Static IP
 -----------------------
 Detect USB Wifi adaptor

@@ -28,6 +28,12 @@ Some scripts are needed to properly configure the EEPROM onboard the BeagleQ Cap
 This simple python code uses the Adafruit BBIO library (already installed on Debian 2015-03-01).
     
     python /var/lib/cloud9/BeagleQ/demo/demo.py
+    
+Install Thingspeak API
+----------------------
+    
+    cd /var/lib/cloud9/BeagleQ/beagleq-server
+    npm install thingspeakclient
 
 Wifi Setup  - Static IP
 -----------------------
